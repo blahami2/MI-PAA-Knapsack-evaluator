@@ -10,11 +10,17 @@ import cz.blahami2.mipaa.knapsack.model.chart.view.ChartExporter;
 import cz.blahami2.mipaa.knapsack.model.table.Column;
 import cz.blahami2.mipaa.knapsack.model.table.DataTable;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,8 +51,8 @@ public class DataManager {
     public DataManager() throws IOException {
         loadVersion();
     }
-    
-    public void nextVersion() throws IOException{
+
+    public void nextVersion() throws IOException {
         loadVersion();
     }
 
@@ -77,7 +83,7 @@ public class DataManager {
     }
 
     public void saveString( String string, String fileName ) throws IOException {
-        PrintWriter writer = new PrintWriter( getTableOutputFile( version, fileName ) );
+        PrintWriter writer = new PrintWriter( new OutputStreamWriter( new FileOutputStream( getTableOutputFile( version, fileName ) ), StandardCharsets.UTF_8 ) );
         writer.print( string );
         writer.close();
     }
@@ -121,13 +127,113 @@ public class DataManager {
     }
 
     public void saveTable( DataTable table ) throws FileNotFoundException {
-        PrintWriter writer = new PrintWriter( getTableOutputFile( version, table.getTitle() ) );
+        PrintWriter writer = new PrintWriter( new OutputStreamWriter( new FileOutputStream( getTableOutputFile( version, table.getTitle() ) ), StandardCharsets.UTF_8 ) );
         List<Column> columns = table.getColumns();
         writer.print( "^" );
         for ( Column column : columns ) {
             writer.print( " " + column.getTitle() + " ^" );
         }
         writer.println();
+        for ( int i = 0; i < table.getRowCount(); i++ ) {
+            writer.print( "|" );
+            for ( Column column : columns ) {
+                String start;
+                String end;
+                switch ( column.getAlignment() ) {
+                    case CENTER:
+                        start = "  ";
+                        end = "  ";
+                        break;
+                    case LEFT:
+                        start = "";
+                        end = "  ";
+                        break;
+                    case RIGHT:
+                        start = "  ";
+                        end = "";
+                        break;
+                    case DEFAULT:
+                        start = " ";
+                        end = " ";
+                        break;
+                    default:
+                        throw new AssertionError();
+                }
+                writer.print( start + column.getRow( i ) + end + "|" );
+            }
+            writer.println();
+        }
+        writer.close();
+        System.out.println( "ExportingTable-'" + table.getTitle() + "'-done" );
+    }
+
+    public List<TableColumn> loadOldTableData( DataTable table, int appendVersion ) throws FileNotFoundException {
+        Scanner sc = new Scanner( new FileInputStream( getTableOutputFile( appendVersion, table.getTitle() ) ), "UTF-8" );
+        List<TableColumn> tCols = new ArrayList<>();
+        String[] split = sc.nextLine().split( "\\^" );
+        for ( int i = 1; i < split.length; i++ ) {
+//            tCols.add( new TableColumn( split[i].substring( 1, split[i].length() - 1 ) ) );
+            tCols.add( new TableColumn( split[i].trim() ) );
+        }
+        for ( int i = 0; i < table.getColumns().size(); i++ ) {
+            if ( !table.getColumns().get( i ).getTitle().equals( tCols.get( i ).getTitle() ) ) {
+                throw new IllegalArgumentException( "Incompatible tables: orig='" + table.getColumns().get( i ).getTitle() + "', loaded='" + tCols.get( i ).getTitle() + "'" );
+            }
+        }
+        while ( sc.hasNextLine() ) {
+            split = sc.nextLine().split( "\\|" );
+            for ( int i = 1; i < split.length; i++ ) {
+                tCols.get( i - 1 ).addValue( split[i].trim() );
+            }
+        }
+//        for ( TableColumn tCol : tCols) {
+//            System.out.println( tCol );
+//        }
+        sc.close();
+        return tCols;
+    }
+
+    public void appendTable( DataTable table, int appendVersion ) throws FileNotFoundException {
+        List<TableColumn> tCols = loadOldTableData( table, appendVersion );
+
+        PrintWriter writer = new PrintWriter( new OutputStreamWriter( new FileOutputStream( getTableOutputFile( appendVersion, table.getTitle() ) ), StandardCharsets.UTF_8 ) );
+        List<Column> columns = table.getColumns();
+        writer.print( "^" );
+        for ( Column column : columns ) {
+            writer.print( " " + column.getTitle() + " ^" );
+        }
+        writer.println();
+        for ( int i = 0; i < tCols.get( 0 ).getValues().size(); i++ ) {
+            writer.print( "|" );
+            int j = 0;
+            for ( Column column : columns ) {
+                String start;
+                String end;
+                switch ( column.getAlignment() ) {
+                    case CENTER:
+                        start = "  ";
+                        end = "  ";
+                        break;
+                    case LEFT:
+                        start = "";
+                        end = "  ";
+                        break;
+                    case RIGHT:
+                        start = "  ";
+                        end = "";
+                        break;
+                    case DEFAULT:
+                        start = " ";
+                        end = " ";
+                        break;
+                    default:
+                        throw new AssertionError();
+                }
+                writer.print( start + tCols.get( j ).getValues().get( i ) + end + "|" );
+                j++;
+            }
+            writer.println();
+        }
         for ( int i = 0; i < table.getRowCount(); i++ ) {
             writer.print( "|" );
             for ( Column column : columns ) {
@@ -201,6 +307,61 @@ public class DataManager {
 
     private static File getExpectedOutputFile( int instanceNumber ) {
         return new File( FOLDER_ROOT + FOLDER_SOLUTIONS + FILE_BASE_NAME + instanceNumber + EXT_SOLUTION );
+    }
+
+    public static class TableColumn {
+
+        private final String title;
+        private final List<String> values;
+
+        public TableColumn( String title ) {
+            this.title = title;
+            this.values = new ArrayList<>();
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public TableColumn addValue( String value ) {
+            values.add( value );
+            return this;
+        }
+
+        public List<String> getValues() {
+            return values;
+        }
+
+        @Override
+        public String toString() {
+            return "TableColumn{" + "title=" + title + ", values=" + values + '}';
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 41 * hash + Objects.hashCode( this.title );
+            return hash;
+        }
+
+        @Override
+        public boolean equals( Object obj ) {
+            if ( this == obj ) {
+                return true;
+            }
+            if ( obj == null ) {
+                return false;
+            }
+            if ( getClass() != obj.getClass() ) {
+                return false;
+            }
+            final TableColumn other = (TableColumn) obj;
+            if ( !Objects.equals( this.title, other.title ) ) {
+                return false;
+            }
+            return true;
+        }
+
     }
 
 }

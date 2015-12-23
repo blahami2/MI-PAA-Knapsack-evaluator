@@ -22,12 +22,12 @@ public interface CrossoverStrategy<T> {
             if ( aArray.size() != bArray.size() ) {
                 throw new IllegalArgumentException( "Incompatible sizes" );
             }
-            System.out.println( "CROSSOVER:" );
-            System.out.println( "aArray: " + aArray );
-            System.out.println( "bArray: " + bArray );
+//            System.out.println( "CROSSOVER:" );
+//            System.out.println( "aArray: " + aArray );
+//            System.out.println( "bArray: " + bArray );
             int size = aArray.size();
             int position = RandomUtils.nextInt( size - 2 ) + 1; // from 1 to size-1
-            System.out.println( "position = " + position + "( from 1 to " + (size - 2) + ")" );
+//            System.out.println( "position = " + position + "( from 1 to " + (size - 2) + ")" );
             BitArray aSibling = creator.createCopyFrom( aArray );
             BitArray bSibling = creator.createCopyFrom( bArray );
             for ( int i = 0; i < position; i++ ) {

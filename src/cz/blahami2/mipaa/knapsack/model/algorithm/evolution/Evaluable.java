@@ -26,6 +26,8 @@ public interface Evaluable extends Comparable {
     public void setFitness( double fitness );
 
     public double getFitness();
+    
+    public int getUniqueInputId();
 
     @Override
     default public int compareTo( Object o ) {

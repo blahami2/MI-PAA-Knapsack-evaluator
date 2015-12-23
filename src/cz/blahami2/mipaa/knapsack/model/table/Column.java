@@ -56,6 +56,14 @@ public class Column<T> {
     public int getRowCount() {
         return data.size();
     }
+    
+    public Column addRow(T row){
+        if ( extractDataStrategy != null ) {
+            throw new UnsupportedOperationException("Not implemented for extractDataStrategy");
+        }
+        this.data.add( row );
+        return this;
+    }
 
     public Alignment getAlignment() {
         return alignment;

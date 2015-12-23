@@ -40,9 +40,13 @@ public abstract class Algorithm<T> {
             Measurement measurement = new Measurement();
             measurement.start();
             for ( int j = 0; j < runCycles; j++ ) {
-                resultConfig = solve(knapsack, data);
+                KnapsackConfig tmp = solve(knapsack, data);
+                if(resultConfig == null || tmp.getPrice() > resultConfig.getPrice()){
+                    resultConfig = tmp;
+                }
             }
             long time = measurement.stop();
+//            System.out.println( "expected price = " + expectedConfig.getPrice() + ", result price = " + resultConfig.getPrice() );
             results.add( new KnapsackResult( knapsack, resultConfig, time / runCycles, ResultComparator.compare( expectedConfig, resultConfig ) ) );
         }
         return results;

@@ -1,12 +1,13 @@
 package cz.blahami2.mipaa.knapsack.model.algorithm.evolution;
 
 import cz.blahami2.mipaa.knapsack.model.Knapsack;
+import cz.blahami2.mipaa.knapsack.model.algorithm.SimulatedEvolution;
 
 /**
  *
  * @author Michael Bláha
  */
-public class KnapsackConfig extends cz.blahami2.mipaa.knapsack.model.KnapsackConfig implements Evaluable, Comparable, BitArray {
+public class KnapsackConfig extends cz.blahami2.mipaa.knapsack.model.KnapsackConfig implements SimulatedEvolution.BitArrayEvaluable {
 
     private int cost = 0;
     private double fitness = 0;
@@ -53,6 +54,16 @@ public class KnapsackConfig extends cz.blahami2.mipaa.knapsack.model.KnapsackCon
     @Override
     public int compareTo(Object o) {
         return ComparatorNatural.INSTANCE.compare(this, (KnapsackConfig) o);
+    }
+
+    @Override
+    public int getUniqueInputId() {
+        return getKnapsack().getId();
+    }
+
+    @Override
+    public InputData getInputData() {
+        return getKnapsack();
     }
 
     public enum ComparatorNatural implements java.util.Comparator<KnapsackConfig> {

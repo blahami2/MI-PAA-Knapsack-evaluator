@@ -49,7 +49,7 @@ public interface SelectionStrategy {
         @Override
         public <T extends Evaluable> List<T> select(List<T> population, Creator<T> creator) {
             List<T> tmpPopulation = new ArrayList<>();
-            Collections.sort(population, Evaluable.ComparatorNatural.INSTANCE);
+            Collections.sort(population, Evaluable.ComparatorReversed.INSTANCE);
             for (int i = 0; i < population.size(); i++) {
                 for (int j = 0; j <= i; j++) {
                     tmpPopulation.add(creator.createCopyFrom(population.get(i)));

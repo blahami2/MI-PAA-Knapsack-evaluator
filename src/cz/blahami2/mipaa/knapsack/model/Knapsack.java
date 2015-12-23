@@ -5,6 +5,7 @@
  */
 package cz.blahami2.mipaa.knapsack.model;
 
+import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.InputData;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Objects;
@@ -13,7 +14,7 @@ import java.util.Objects;
  *
  * @author MBlaha
  */
-public class Knapsack {
+public class Knapsack implements InputData {
 
     int id;
     int itemCount;

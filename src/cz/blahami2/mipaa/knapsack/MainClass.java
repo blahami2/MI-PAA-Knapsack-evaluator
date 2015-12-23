@@ -5,10 +5,14 @@ import cz.blahami2.mipaa.knapsack.model.chart.Axis;
 import cz.blahami2.mipaa.knapsack.model.chart.Chart;
 import cz.blahami2.mipaa.knapsack.model.chart.PointSet;
 import cz.blahami2.mipaa.knapsack.model.chart.view.ChartExporter;
+import cz.blahami2.mipaa.knapsack.model.io.DataManager;
+import cz.blahami2.mipaa.knapsack.model.table.Column;
+import cz.blahami2.mipaa.knapsack.model.table.DataTable;
 import cz.blahami2.mipaa.knapsack.model.tasks.*;
 import cz.blahami2.mipaa.knapsack.utils.FormatUtils;
 import cz.blahami2.mipaa.knapsack.view.GraphViewer;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
@@ -21,7 +25,39 @@ public class MainClass {
 
     public static void main( String[] args ) throws IOException {
         startTimer();
-        new HomeWork3().run();
+        new MainClass().hw4GenerateGraphs();
+        
+        
+        HomeWork4  hw= new HomeWork4();
+        hw.run();
+//        new HomeWork4().generateGraphs();//.run();
+
+//        DataManager dataManager = new DataManager();
+//        DataTable fullTable = new DataTable( "hw4_full", 0 )
+//                .addColumn( Column.newColumn( "Počet předmětů", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Počet instancí", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Velikost populace", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Počet generací", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Šance křížení", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Šance mutace", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Poměr elity", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Postih nevalidního stavu", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Strategie selekce", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Strategie křížení", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Strategie mutace", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Čas evoluce [milisekundy]", new ArrayList<>() ).setAlignment( Column.Alignment.RIGHT ) )
+//                .addColumn( Column.newColumn( "Průměrná relativní chyba evoluce", new ArrayList<>() ) )
+//                .addColumn( Column.newColumn( "Maximální relativní chyba evoluce", new ArrayList<>() ) );
+//        for ( int i = 0; i < 10; i++ ) {
+//            List<String> data = new ArrayList<>();
+//            for ( int j = 0; j < 14; j++ ) {
+//                data.add( "Column#" + j + ":val=" + i );
+//            }
+//            fullTable.addRow( data );
+//        }
+////        dataManager.saveTable( fullTable );
+//        dataManager.appendTable( fullTable, 10 );
+
 //        List<Double> data = Arrays.asList( 0.0, -0.5, -1.0, -1.5, -2.0, 0.5, 1.0, 1.5, 2.0 );
 //        GraphViewer gv = new GraphViewer();
 //        gv.setGraph( ChartExporter.createImage(
@@ -141,6 +177,9 @@ public class MainClass {
 //            }
 //            System.out.println( "pSum = " + pSum + ", wSum = " + wSum + ", knapsack: p = " + knapsack.getPriceSum() + ", w = " + knapsack.getWeightSum() );
 //        }
+    }
+    
+    public void hw4GenerateGraphs(){
     }
 
     public void run4() throws IOException {

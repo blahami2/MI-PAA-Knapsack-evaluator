@@ -1,15 +1,17 @@
 package cz.blahami2.mipaa.knapsack.model.algorithm;
 
+import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.BitArray;
 import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.CrossoverStrategy;
+import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.Evaluable;
 import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.MutationStrategy;
-import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.KnapsackConfig;
-import cz.blahami2.mipaa.knapsack.model.Knapsack;
 import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.EvolutionConfiguration;
+import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.InputData;
 import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.Logger;
 import cz.blahami2.mipaa.knapsack.model.algorithm.evolution.SelectionStrategy;
 import cz.blahami2.mipaa.knapsack.utils.RandomUtils;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,24 +19,25 @@ import java.util.stream.Collectors;
  *
  * @author Michael Bláha
  */
-public class SimulatedEvolution extends Algorithm<EvolutionConfiguration> {
+public class SimulatedEvolution {
 
 //    static {
 //        System.err.println( "WARNING: SimulatedEvolution works only up to 99 items. See SimulatedEvolution.getFitness(KnapsackConfig) for details." );
 //    }
-
     private final Logger logger = new Logger();
-    private static final SelectionStrategy.Creator<KnapsackConfig> SELECTION_CREATOR = (KnapsackConfig original) -> new KnapsackConfig( original );
-    private static final CrossoverStrategy.Creator<KnapsackConfig> CROSSOVER_CREATOR = (KnapsackConfig original) -> new KnapsackConfig( original );
+    private final SelectionStrategy.Creator selectionCreator;
+    private final CrossoverStrategy.Creator crossoverCreator;
+    private final Creator creator;
 
-    public SimulatedEvolution( int warmupCycles, int runCycles ) {
-        super( warmupCycles, runCycles );
+    public SimulatedEvolution( int warmupCycles, int runCycles, Creator creator ) {
+        this.creator = creator;
+        this.selectionCreator = (SelectionStrategy.Creator<BitArrayEvaluable>) (BitArrayEvaluable original) -> creator.createCopyFrom( original );
+        this.crossoverCreator = (CrossoverStrategy.Creator<BitArrayEvaluable>) (BitArrayEvaluable original) -> creator.createCopyFrom( original );
     }
 
-    @Override
-    public KnapsackConfig solve( Knapsack knapsack, EvolutionConfiguration evolutionConfiguration ) {
-        KnapsackConfig resultConfig = null;
-        List<KnapsackConfig> population = initPopulation( knapsack, evolutionConfiguration.getPopulationSize() );// init population 
+    public BitArrayEvaluable solve( BitArrayEvaluable defaultConfig, EvolutionConfiguration evolutionConfiguration ) {
+        BitArrayEvaluable resultConfig = null;
+        List<BitArrayEvaluable> population = initPopulation( defaultConfig, evolutionConfiguration.getPopulationSize() );// init population 
         int eliteCount = evolutionConfiguration.getEliteCount();
         if ( evolutionConfiguration.getPopulationSize() % 2 == 0 && eliteCount % 2 == 1 ) {
             eliteCount++; // even count
@@ -47,18 +50,18 @@ public class SimulatedEvolution extends Algorithm<EvolutionConfiguration> {
             double averageCost = (double) totalCost / (double) population.size();
             population.stream().forEach( (cfg) -> cfg.evaluateFitness( averageCost, evolutionConfiguration.getInvalidRate() ) );
             /* logging results */
-            Collections.sort( population, KnapsackConfig.ComparatorNatural.INSTANCE );
-            KnapsackConfig bestConfig = null;
-            KnapsackConfig worstConfig = null;
+            Collections.sort( population );
+            BitArrayEvaluable bestConfig = null;
+            BitArrayEvaluable worstConfig = null;
             for ( int i = 0; i < population.size(); i++ ) {
                 if ( population.get( i ).isValid() ) {
-                    worstConfig = new KnapsackConfig( population.get( i ) );
+                    worstConfig = (BitArrayEvaluable) selectionCreator.createCopyFrom( population.get( i ) );
                     break;
                 }
             }
             for ( int i = population.size() - 1; i >= 0; i-- ) {
                 if ( population.get( i ).isValid() ) {
-                    bestConfig = new KnapsackConfig( population.get( i ) );
+                    bestConfig = (BitArrayEvaluable) selectionCreator.createCopyFrom( population.get( i ) );
                     break;
                 }
             }
@@ -66,28 +69,28 @@ public class SimulatedEvolution extends Algorithm<EvolutionConfiguration> {
                 if ( worstConfig != null ) {
                     throw new AssertionError( "wtf?" );
                 }
-                bestConfig = (KnapsackConfig) new KnapsackConfig( knapsack ).setFromLongInteger( 0 );
-                worstConfig = (KnapsackConfig) new KnapsackConfig( knapsack ).setFromLongInteger( 0 );
+                bestConfig = creator.createDefault();
+                worstConfig = creator.createDefault();
             }
-            List<KnapsackConfig> validStream = population.stream().filter( (cfg) -> cfg.isValid() ).collect( Collectors.toCollection( ArrayList::new ) );
-            int totalPrice = validStream.stream().reduce( 0, (x, y) -> x + y.getPrice(), (x, y) -> x + y );
-            logger.log( knapsack, counter, bestConfig, worstConfig, (double) totalPrice / validStream.size() );
+            List<BitArrayEvaluable> validStream = population.stream().filter( (cfg) -> cfg.isValid() ).collect( Collectors.toCollection( ArrayList::new ) );
+            int totalPrice = validStream.stream().reduce( 0, (x, y) -> x + y.evaluateCost(), (x, y) -> x + y );
+            logger.log( defaultConfig.getInputData(), counter, bestConfig, worstConfig, (double) totalPrice / validStream.size() );
             if ( resultConfig == null
                  || resultConfig.compareTo( bestConfig ) < 0 ) {
-                resultConfig = new KnapsackConfig( bestConfig );
+                resultConfig = creator.createCopyFrom( bestConfig );
             }
             /* elites */
-            List<KnapsackConfig> elites = population.stream().sorted( KnapsackConfig.ComparatorReversed.INSTANCE ).limit( eliteCount ).collect( Collectors.toCollection( ArrayList::new ) );
+            List<BitArrayEvaluable> elites = population.stream().sorted( Evaluable.ComparatorReversed.INSTANCE ).limit( eliteCount ).collect( Collectors.toCollection( ArrayList::new ) );
             /* PHASE: selection */
-            List<KnapsackConfig> tmpPopulation = select( evolutionConfiguration.getSelectionStrategy(), population );
+            List<BitArrayEvaluable> tmpPopulation = select( evolutionConfiguration.getSelectionStrategy(), population );
             population.clear();
             /* PHASE: crossover */
             // filling population!
             if ( RandomUtils.nextDouble() <= evolutionConfiguration.getCrossoverRate() ) { // if crossover happening
                 while ( population.size() + elites.size() < evolutionConfiguration.getPopulationSize() ) {
-                    KnapsackConfig aConfig = random( tmpPopulation );
-                    KnapsackConfig bConfig = random( tmpPopulation );
-                    CrossoverStrategy.Duo<KnapsackConfig> crossoverResult = crossover( evolutionConfiguration.getCrossoverStrategy(), aConfig, bConfig );
+                    BitArrayEvaluable aConfig = random( tmpPopulation );
+                    BitArrayEvaluable bConfig = random( tmpPopulation );
+                    CrossoverStrategy.Duo<BitArrayEvaluable> crossoverResult = crossover( evolutionConfiguration.getCrossoverStrategy(), aConfig, bConfig );
                     population.add( crossoverResult.a );
                     population.add( crossoverResult.b );
                 }
@@ -115,49 +118,60 @@ public class SimulatedEvolution extends Algorithm<EvolutionConfiguration> {
         return logger;
     }
 
-    private KnapsackConfig findBest( List<KnapsackConfig> population ) {
-        return population.stream().filter( (cfg) -> cfg.isValid() ).max( KnapsackConfig.ComparatorNatural.INSTANCE ).get();
+    private BitArrayEvaluable findBest( List<BitArrayEvaluable> population ) {
+        return population.stream().filter( (cfg) -> cfg.isValid() ).max( Evaluable.ComparatorNatural.INSTANCE ).get();
     }
 
-    private KnapsackConfig findWorst( List<KnapsackConfig> population ) {
-        return population.stream().filter( (cfg) -> cfg.isValid() ).min( KnapsackConfig.ComparatorNatural.INSTANCE ).get();
+    private BitArrayEvaluable findWorst( List<BitArrayEvaluable> population ) {
+        return population.stream().filter( (cfg) -> cfg.isValid() ).min( Evaluable.ComparatorNatural.INSTANCE ).get();
     }
 
-    private KnapsackConfig random( List<KnapsackConfig> population ) {
+    private BitArrayEvaluable random( List<BitArrayEvaluable> population ) {
         return population.get( RandomUtils.nextInt( population.size() ) );
     }
 
-    private List<KnapsackConfig> initPopulation( Knapsack knapsack, int populationSize ) {
-        List<KnapsackConfig> population = new ArrayList<>();
-        for(int i = 0; i < knapsack.getItemCount(); i++){
-            KnapsackConfig k = new KnapsackConfig(knapsack );
+    private List<BitArrayEvaluable> initPopulation( BitArrayEvaluable defaultConfig, int populationSize ) {
+        List<BitArrayEvaluable> population = new ArrayList<>();
+        for ( int i = 0; i < defaultConfig.size(); i++ ) {
+            BitArrayEvaluable k = creator.createCopyFrom( defaultConfig );
             k.set( i, true );
             population.add( k );
         }
         while ( population.size() < populationSize ) {
-            KnapsackConfig k = new KnapsackConfig(knapsack );
-            for(int i = 0; i < knapsack.getItemCount(); i++){
-                k.set( i, RandomUtils.nextDouble() >= 0.5);
+            BitArrayEvaluable k = creator.createCopyFrom( defaultConfig );
+            for ( int i = 0; i < defaultConfig.size(); i++ ) {
+                k.set( i, RandomUtils.nextDouble() >= 0.5 );
             }
             population.add( k );
         }
         return population;
     }
 
-    private List<KnapsackConfig> select( SelectionStrategy strategy, List<KnapsackConfig> population ) {
-        return (List<KnapsackConfig>) strategy.select( population, SELECTION_CREATOR );
+    private List<BitArrayEvaluable> select( SelectionStrategy strategy, List<BitArrayEvaluable> population ) {
+        return (List<BitArrayEvaluable>) strategy.select( population, selectionCreator );
     }
 
-    private KnapsackConfig mutate( MutationStrategy strategy, KnapsackConfig config ) {
-        return (KnapsackConfig) strategy.mutate( config );
+    private BitArrayEvaluable mutate( MutationStrategy strategy, BitArrayEvaluable config ) {
+        return (BitArrayEvaluable) strategy.mutate( config );
     }
 
-    private CrossoverStrategy.Duo<KnapsackConfig> crossover( CrossoverStrategy strategy, KnapsackConfig aConfig, KnapsackConfig bConfig ) {
-        return strategy.crossover( aConfig, bConfig, CROSSOVER_CREATOR );
+    private CrossoverStrategy.Duo<BitArrayEvaluable> crossover( CrossoverStrategy strategy, BitArrayEvaluable aConfig, BitArrayEvaluable bConfig ) {
+        return strategy.crossover( aConfig, bConfig, crossoverCreator );
     }
 
     private boolean isTerminationConditionFulfilled( EvolutionConfiguration evolutionConfiguration, int counter ) {
         return counter < evolutionConfiguration.getNumberOfGenerations();
+    }
+
+    public interface Creator<T extends BitArrayEvaluable> {
+
+        T createDefault();
+
+        T createCopyFrom( T original );
+    }
+
+    public interface BitArrayEvaluable extends Evaluable, BitArray {
+        InputData getInputData();
     }
 
 }
